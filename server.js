@@ -381,15 +381,17 @@ async function startTelegramBot() {
             chat_id: message.chat.id,
             text: "به AURORA خوش اومدی 🚀",
             reply_markup: {
-              inline_keyboard: [
-                [
-    text: "🚀 ورود به AURORA",
-    web_app: {
-        url: https://aurora-mini-app-1.onrender.com
-    }
-                  }
-                  }
-                ]
+    inline_keyboard: [
+        [
+            {
+                text: "🚀 ورود به AURORA",
+                web_app: {
+                    url: "https://aurora-mini-app-1.onrender.com"
+                }
+            }
+        ]
+    ]
+              }
               ]
             }
           });
