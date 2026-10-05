@@ -383,7 +383,11 @@ async function startTelegramBot() {
             reply_markup: {
               inline_keyboard: [
                 [
-                  {
+    text: "🚀 ورود به AURORA",
+    web_app: {
+        url: "URL_AURORA"
+    }
+                  }
                     text: "🚀 ورود به AURORA",
                     callback_data: "open_aurora"
                   }
