@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AURORA | آرورا</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Tahoma,Arial,sans-serif;background:radial-gradient(circle at 50% -10%,#243b63 0,#101522 42%,#080b12 100%);color:#fff;min-height:100vh}
+    .wrap{max-width:520px;margin:auto;padding:22px 16px 30px}
+    .hero{text-align:center;padding:18px 8px 22px}
+    .logo{width:76px;height:76px;border-radius:24px;margin:auto;display:grid;place-items:center;font-size:38px;background:linear-gradient(145deg,#e8c46a,#8d6420);box-shadow:0 10px 35px rgba(230,190,80,.25)}
+    h1{margin:13px 0 4px;font-size:28px;letter-spacing:2px}.sub{color:#bfc7d8;font-size:13px}
+    .card{background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:16px;margin-bottom:12px;backdrop-filter:blur(10px)}
+    .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.stat{background:rgba(0,0,0,.18);border-radius:15px;padding:13px 5px;text-align:center}
+    .num{font-size:20px;font-weight:700;margin-bottom:5px}.label{font-size:11px;color:#aeb7ca}
+    .menu{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    button{border:0;color:#fff;font-size:14px;font-family:inherit;font-weight:700;padding:17px 10px;border-radius:17px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.08)}
+    button:active{transform:scale(.98)}.primary{background:linear-gradient(135deg,#d8b45a,#80601e);color:#111}
+    .list{margin-top:12px}.task{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+    .task:last-child{border-bottom:0}.task small{display:block;color:#9ea9bc;margin-top:5px}.task button{padding:9px 12px;min-width:80px}
+    .note{text-align:center;color:#929caf;font-size:11px;line-height:1.8;margin-top:20px}
+    .msg{text-align:center;color:#d8dee9;font-size:12px;margin:10px 0}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div class="logo">🌌</div><h1>AURORA</h1>
+    <div class="sub">آرورا • ساختن آینده، قدم‌به‌قدم</div>
+  </section>
+
+  <div class="card">
+    <div id="welcome" style="font-weight:700;margin-bottom:13px">در حال اتصال...</div>
+    <div class="stats">
+      <div class="stat"><div class="num" id="points">0</div><div class="label">امتیاز</div></div>
+      <div class="stat"><div class="num" id="rank">-</div><div class="label">رتبه</div></div>
+      <div class="stat"><div class="num" id="tasksDone">0</div><div class="label">تسک انجام‌شده</div></div>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button class="primary" onclick="loadTasks()">🎯 تسک‌ها</button>
+    <button onclick="loadLeaderboard()">🏆 رتبه‌بندی</button>
+    <button onclick="loadReferral()">👥 دعوت دوستان</button>
+    <button onclick="showRewards()">🎁 پاداش</button>
+  </div>
+
+  <div id="message" class="msg"></div>
+  <div id="content" class="card list" style="display:none"></div>
+
+  <div class="note">نسخه ۲: حساب کاربری، دیتابیس، امتیاز، تسک، رتبه‌بندی و دعوت در بک‌اند متصل شده‌اند.</div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const initData = tg?.initData || "";
+const headers = {"Content-Type":"application/json","X-Telegram-Init-Data":initData};
+
+async function api(url, options={}) {
+  const r = await fetch(url, {...options, headers:{...headers,...(options.headers||{})}});
+  const data = await r.json().catch(()=>({}));
+  if (!r.ok) throw new Error(data.message || data.error || "خطا");
+  return data;
+}
+
+function setMsg(text){document.getElementById("message").textContent=text||"";}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+
+async function refreshMe(){
+  try{
+    const d=await api("/api/me");
+    document.getElementById("welcome").textContent=`سلام ${d.user.firstName||"دوست آرورا"} 👋`;
+    document.getElementById("points").textContent=d.user.points;
+    document.getElementById("tasksDone").textContent=d.user.tasksCompleted;
+    const lb=await api("/api/leaderboard");
+    const me=String(d.user.telegramId);
+    const row=lb.leaderboard.findIndex(x=>String(x.telegramId)===me);
+    // rank is shown from server when available; fallback to "-"
+    const match=lb.leaderboard.find(x=>String(x.telegramId)===me);
+    document.getElementById("rank").textContent=match?.rank ?? "-";
+  }catch(e){document.getElementById("welcome").textContent="اتصال به حساب تلگرام ناموفق بود";}
+}
+
+async function loadTasks(){
+  try{
+    setMsg("در حال دریافت تسک‌ها...");
+    const d=await api("/api/tasks");
+    const el=document.getElementById("content"); el.style.display="block";
+    el.innerHTML="<b>🎯 تسک‌ها</b>"+d.tasks.map(t=>`
+      <div class="task">
+        <div><b>${esc(t.title)}</b><small>${esc(t.description)} • +${t.reward} امتیاز</small></div>
+        <button ${t.completed?"disabled":""} onclick="completeTask(${t.id})">${t.completed?"انجام شد":"انجام"}</button>
+      </div>`).join("");
+    setMsg("");
+  }catch(e){setMsg(e.message)}
+}
+async function completeTask(id){
+  try{
+    const d=await api("/api/tasks/"+id+"/complete",{method:"POST"});
+    setMsg(`تبریک! ${d.reward} امتیاز گرفتی 🎉`);
+    await refreshMe(); await loadTasks();
+  }catch(e){setMsg(e.message)}
+}
+async function loadLeaderboard(){
+  try{
+    const d=await api("/api/leaderboard");
+    const el=document.getElementById("content"); el.style.display="block";
+    el.innerHTML="<b>🏆 رتبه‌بندی</b>"+d.leaderboard.map(x=>`
+      <div class="task"><div>#${x.rank} — ${esc(x.firstName||x.username||"کاربر")}</div><b>${x.points}</b></div>`).join("");
+    setMsg("");
+  }catch(e){setMsg(e.message)}
+}
+async function loadReferral(){
+  try{
+    const d=await api("/api/referral");
+    const el=document.getElementById("content"); el.style.display="block";
+    el.innerHTML=`<b>👥 دعوت دوستان</b><p>تعداد دعوت موفق: ${d.referrals}</p>
+      <p style="word-break:break-all;font-size:11px">${esc(d.link)}</p>
+      <button class="primary" onclick="copyRef('${esc(d.link)}')">کپی لینک دعوت</button>`;
+    setMsg("");
+  }catch(e){setMsg(e.message)}
+}
+async function copyRef(link){
+  try{await navigator.clipboard.writeText(link);setMsg("لینک کپی شد ✅")}
+  catch{setMsg(link)}
+}
+function showRewards(){
+  const el=document.getElementById("content"); el.style.display="block";
+  el.innerHTML="<b>🎁 پاداش</b><p>پاداش‌ها از انجام تسک‌ها و دعوت دوستان در دیتابیس ثبت می‌شوند.</p>";
+  setMsg("");
+}
+refreshMe();
+</script>
+</body>
+</html>
