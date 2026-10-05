@@ -385,11 +385,9 @@ async function startTelegramBot() {
                 [
     text: "🚀 ورود به AURORA",
     web_app: {
-        url: "URL_AURORA"
+        url: https://aurora-mini-app-1.onrender.com
     }
                   }
-                    text: "🚀 ورود به AURORA",
-                    callback_data: "open_aurora"
                   }
                 ]
               ]
