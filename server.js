@@ -324,7 +324,87 @@ app.post("/api/referral/claim", auth, (req, res) => {
 
   res.json({ ok: true, reward: REWARD });
 });
+// ===============================
+// Telegram Bot - /start
+// ===============================
 
+async function telegramRequest(method, body) {
+  const response = await fetch(
+    `https://api.telegram.org/bot${BOT_TOKEN}/${method}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body)
+    }
+  );
+
+  return response.json();
+}
+
+let telegramOffset = 0;
+
+async function startTelegramBot() {
+  if (!BOT_TOKEN) {
+    console.log("BOT_TOKEN is not set. Telegram bot is disabled.");
+    return;
+  }
+
+  console.log("AURORA Telegram bot started.");
+
+  while (true) {
+    try {
+      const result = await telegramRequest("getUpdates", {
+        offset: telegramOffset,
+        timeout: 30,
+        allowed_updates: ["message"]
+      });
+
+      if (!result.ok) {
+        console.error("Telegram getUpdates error:", result.description);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        continue;
+      }
+
+      for (const update of result.result) {
+        telegramOffset = update.update_id + 1;
+
+        const message = update.message;
+
+        if (!message || !message.text) {
+          continue;
+        }
+
+        if (message.text.startsWith("/start")) {
+          await telegramRequest("sendMessage", {
+            chat_id: message.chat.id,
+            text: "به AURORA خوش اومدی 🚀",
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: "🚀 ورود به AURORA",
+                    callback_data: "open_aurora"
+                  }
+                ]
+              ]
+            }
+          });
+
+          console.log(
+            `AURORA /start received from Telegram user ${message.from?.id}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Telegram polling error:", error);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+}
+
+startTelegramBot();
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
